@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Station Check-In</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 400px; margin: auto; text-align: center; }
+    button { padding: 10px 20px; font-size: 18px; border-radius: 8px; margin-top: 15px; }
+    #status { margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Station Check-In</h2>
+  <p id="stationInfo">Loading station...</p>
+  <input type="email" id="emailInput" placeholder="Enter your Gmail" required />
+  <br><br>
+  <button id="checkInBtn" disabled>Check In</button>
+  <p id="status"></p>
+
+  <script>
+    const stationParam = new URLSearchParams(window.location.search).get('station');
+    const stationInfo = document.getElementById('stationInfo');
+    const checkInBtn = document.getElementById('checkInBtn');
+    const statusP = document.getElementById('status');
+    const emailInput = document.getElementById('emailInput');
+
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzIVaLIEnSFUt7d0Cap89gLC1HBpbh8bWV1xOQaZ2LeQTonKAq-ldx5uLOOOcePEGSzWg/exec'; // Replace this with your Web App URL
+
+    if (!stationParam) {
+      stationInfo.textContent = 'Station not specified.';
+      checkInBtn.style.display = 'none';
+      throw new Error('No station');
+    } else {
+      stationInfo.textContent = `Station: ${stationParam}`;
+    }
+
+    emailInput.addEventListener('input', () => {
+      checkInBtn.disabled = !emailInput.value.endsWith('@gmail.com');
+    });
+
+    checkInBtn.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        statusP.textContent = 'GPS not supported.';
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(pos => {
+        const data = {
+          station: stationParam,
+          email: emailInput.value.trim(),
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+
+        fetch(API_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+          if (result.status === 'success') {
+            statusP.textContent = '✅ Check-in successful!';
+            checkInBtn.disabled = true;
+          } else {
+            statusP.textContent = `❌ ${result.message}`;
+          }
+        })
+        .catch(err => {
+          statusP.textContent = '❌ Failed to submit.';
+          console.error(err);
+        });
+
+      }, () => {
+        statusP.textContent = '❌ GPS denied. Cannot check in.';
+      });
+    });
+  </script>
+</body>
+</html>
